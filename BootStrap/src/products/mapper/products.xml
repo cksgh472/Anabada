@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="products">
+  <select id="list" resultType="products.dto.ProductsDTO">
+	      select * from(
+      select A.*, rownum as rn
+      from (
+        select num,writer,subject,reg_date,readcount,filename,filesize,click,re_level
+        ,(select count(*) from usersell_comment where usersell_num=num) comment_count, show, categories,categories_detail,newproduct,totalprice
+		from usersell order by ref desc, re_step ) A )
+    where rn between #{start} and #{end}
+	</select>
+  
+  <select id="newproduct" resultType="products.dto.ProductsDTO">
+	      select * from(
+      select A.*, rownum as rn
+      from (
+        select num,writer,subject,reg_date,readcount,filename,filesize,click,re_level
+        ,(select count(*) from usersell_comment where usersell_num=num) comment_count, show, categories,categories_detail,newproduct,totalprice
+		from usersell where newproduct=#{newproduct} order by ref desc, re_step ) A )
+    where rn between #{start} and #{end}
+	</select>
+	
+  <select id="listcate" resultType="products.dto.ProductsDTO">
+    select * from(
+      select A.*, rownum as rn
+      from (
+        select num,writer,subject,reg_date,readcount,filename,filesize,click,re_level
+        ,(select count(*) from usersell_comment where usersell_num=num) comment_count, show, categories,categories_detail,newproduct,totalprice
+		from usersell where categories_detail=#{categories_detail} order by ref desc, re_step ) A )
+    where rn between #{start} and #{end}
+  </select>
+  
+  <insert id="insert">
+    insert into usersell (num,writer,subject,passwd,ref,re_step,re_level,content,ip,categories,categories_detail
+    ,price,delprice,totalprice,filename,filename1,filename2,filename3,filename4,filename5
+    ,filesize,filesize1,filesize2,filesize3,filesize4,filesize5,newproduct)
+		values((select nvl(max(num)+1,1) from usersell),#{writer},#{subject},#{passwd},(select nvl(max(num)+1,1) from usersell),1,0
+		 ,#{content},#{ip},#{categories},#{categories_detail},#{price},#{delprice},#{totalprice}
+		 ,#{filename},#{filename1},#{filename2, jdbcType=VARCHAR},#{filename3, jdbcType=VARCHAR}
+		 ,#{filename4, jdbcType=VARCHAR},#{filename5, jdbcType=VARCHAR},#{filesize},#{filesize1},#{filesize2},#{filesize3}
+		 ,#{filesize4},#{filesize5},#{newproduct})
+  </insert>
+  
+  <select id="getFileName" resultType="String">
+    select filename
+    from usersell
+    where num=#{num}
+  </select>
+  
+  <update id="plusClick">
+    update usersell set click=click+1 where num=#{num} 
+  </update>
+  
+  <select id="view" resultType="products.dto.ProductsDTO">
+    select * from usersell
+    where num=#{num}
+  </select>
+  
+  <update id="plusReadCount">
+    update usersell set readcount=readcount+1 
+    where num=#{num}
+  </update>
+  
+  <select id="commentList" 
+		resultType="products.dto.ProductsCommentDTO">
+		select * from usersell_comment 
+		where usersell_num=#{num}
+	</select>	
+	
+	<insert id="commentAdd">
+	  insert into usersell_comment
+		(comment_num,usersell_num,writer,content) values
+		((select nvl(max(comment_num)+1,1) from usersell_comment)
+		, #{usersell_num}, #{writer}, #{content})
+	</insert>
+	
+	<update id="updateStep">
+	  update products 
+		set re_step=re_step+1
+		where ref=#{ref} and re_step >= #{re_step}
+	</update>
+	
+	<select id="pass_check" resultType="String">
+	  select passwd from usersell
+	  where num=#{num} and passwd=#{passwd}
+	</select>
+	
+	<update id="update">
+	  update usersell
+		set writer=#{writer}, subject=#{subject}
+		 , content=#{content}, filename=#{filename},filename1=#{filename1},filename2=#{filename2, jdbcType=VARCHAR}
+		 ,filename3=#{filename3, jdbcType=VARCHAR},filename4=#{filename4, jdbcType=VARCHAR},filename5=#{filename5, jdbcType=VARCHAR}
+		 , filesize=#{filesize},filesize1=#{filesize1},filesize2=#{filesize2}
+		 ,filesize3=#{filesize3},filesize4=#{filesize4},filesize5=#{filesize5}
+		 ,categories=#{categories},categories_detail=#{categories_detail},price=#{price},delprice=#{delprice},totalprice=#{totalprice}
+		 ,newproduct=#{newproduct}, ip=#{ip}
+		where num=#{num}
+	</update>
+	
+	<update id="delete">
+	  update usersell set show='n'
+	  where num=#{num}
+	</update>
+	
+	<select id="searchList" resultType="products.dto.ProductsDTO">
+	  select * from(select A.*, rownum as rn from (select num,writer,subject,reg_date,readcount,filename,filesize,click,re_level
+        ,(select count(*) from usersell_comment where usersell_num=num) comment_count, show,totalprice
+		from usersell  where (writer like #{keyword} or subject like #{keyword} or content like #{keyword} and show='y') order by ref desc, re_step ) A )
+    where rn between #{start} and #{end}
+	</select>
+	
+	<select id="count" resultType="int">
+	  select count(*) from usersell
+	</select>
+	<select id="countnew" resultType="int">
+	  select count(*) from usersell where newproduct='y'
+	</select>
+	<select id="countcate" resultType="int">
+	  select count(*) from usersell where categories_detail=#{categories_detail}
+	</select>
+	<select id="searchcount" resultType="int">
+	  select count(*) from usersell where writer like #{keyword} or subject like #{keyword} or content like #{keyword} and show='y'
+	</select>
+</mapper>

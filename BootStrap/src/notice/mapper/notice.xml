@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="notice">
+  <select id="list" resultType="notice.dto.NoticeDTO">
+       select *
+    from(
+      select A.*, rownum as rn
+      from ( 
+        select num,writer,subject,reg_date,readcount
+				,re_level,content,ip
+				,(select count(*) from notice_comment
+				where notice_num=num) comment_count
+				from notice
+				order by ref desc, re_step
+        ) A
+     )
+     where rn between  #{start} and #{end} 
+  </select>
+  
+  <insert id="insert">
+    insert into notice
+			(num,writer,subject,passwd,ref,re_step,re_level,content,ip)
+		values
+		( (select nvl(max(num)+1,1) from notice)
+		 ,#{writer},#{subject},#{passwd}
+		 ,(select nvl(max(num)+1,1) from notice)
+		 ,1,0,#{content},#{ip})
+  </insert>
+  
+  <select id="getFileName" resultType="String">
+    select filename
+    from board
+    where num=#{num}
+  </select>
+  
+  <update id="plusDown">
+    update board set down=down+1 where num=#{num} 
+  </update>
+  
+  <select id="view" resultType="notice.dto.NoticeDTO">
+    select * from notice
+    where num=#{num}
+  </select>
+  
+  <update id="plusReadCount">
+    update notice set readcount=readcount+1 
+    where num=#{num}
+  </update>
+  
+  <select id="commentList" 
+		resultType="notice.dto.NoticeCommentDTO">
+		select * from notice_comment 
+		where notice_num=#{num}
+	</select>	
+	
+	<insert id="commentAdd">
+	  insert into notice_comment
+		(comment_num,notice_num,writer,content) values
+		((select nvl(max(comment_num)+1,1) from notice_comment)
+		, #{notice_num}, #{writer}, #{content})
+	</insert>
+	
+	<update id="updateStep">
+	  update board 
+		set re_step=re_step+1
+		where ref=#{ref} and re_step >= #{re_step}
+	</update>
+	
+	<insert id="reply">
+	  insert into board
+			(num,writer,subject,passwd,ref,re_step,re_level
+			,content,ip,filename,filesize)
+		values
+		( (select nvl(max(num)+1,1) from board)
+		 ,#{writer},#{subject},#{passwd}
+		 ,#{ref},#{re_step},#{re_level}
+		 ,#{content},#{ip},#{filename},#{filesize} )
+	</insert>
+	
+	<select id="pass_check" resultType="String">
+	  select passwd from board
+	  where num=#{num} and passwd=#{passwd}
+	</select>
+	
+	<update id="update">
+	  update notice
+		set writer=#{writer}, subject=#{subject}
+		 , content=#{content}, ip=#{ip}
+		where num=#{num}
+	</update>
+	
+	<delete id="delete">
+	  delete from notice 
+	  where num=#{num}
+	</delete>
+	
+	<select id="searchList" resultType="notice.dto.NoticeDTO">
+	  select num,writer,subject,reg_date,readcount
+	  ,filename,filesize,down,re_level
+			,(select count(*) from board_comment 
+			where board_num=num) comment_count, show
+		from board
+		<choose>
+		  <when test="search_option != 'all'">
+		    where ${search_option} like #{keyword} and show='y'
+		  </when>
+		  <otherwise>
+		    where ( writer like #{keyword} 
+		    or subject like #{keyword} 
+		    or content like #{keyword} ) and show='y'
+		  </otherwise>
+		</choose>
+		order by ref desc, re_step
+	</select>
+	
+	<select id="count" resultType="int">
+	  select count(*) from notice
+	</select>
+</mapper>
